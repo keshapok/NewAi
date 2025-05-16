@@ -1,8 +1,14 @@
 import os
 import logging
 import requests
+import nest_asyncio
+import asyncio
+import sys
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+
+# Применяем патч для работы asyncio в Render
+nest_asyncio.apply()
 
 # Логирование
 logging.basicConfig(
@@ -61,9 +67,7 @@ async def main():
     await app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
-    import asyncio
-    import sys
-
+    # Поддержка Windows/Linux
     if sys.platform == 'win32':
         policy = asyncio.WindowsSelectorEventLoopPolicy()
     else:
