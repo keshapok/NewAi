@@ -1,13 +1,12 @@
 import os
 import logging
 import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import nest_asyncio
 import asyncio
 import sys
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Применяем патч для работы asyncio в Render
 nest_asyncio.apply()
 
 # Логирование
@@ -21,7 +20,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
 # Настройки модели
-MODEL_NAME = "IlyaGusev/rugpt3small_based_on_gpt2"
+MODEL_NAME = "ai-forever/ruGPT-3-small"
 API_URL = f"https://api-inference.huggingface.co/models/ {MODEL_NAME}"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
@@ -48,7 +47,7 @@ def query_model(question: str) -> str:
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я ваш ИИ-ассистент на русском языке. Задавайте свои вопросы.")
+    await update.message.reply_text("Привет! Я ваш ИИ-ассистент на русском языке.")
 
 # Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
