@@ -14,8 +14,8 @@ logging.basicConfig(
 )
 
 # Переменные окружения
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "ВАШ_ТОКЕН")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN", "ВАШ_HF_ТОКЕН")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
+HF_API_TOKEN = os.getenv("HF_API_TOKEN", "YOUR_HF_READ_TOKEN")
 
 # Настройки модели
 MODEL_NAME = "ai-forever/ruGPT-3-small"
@@ -54,7 +54,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = query_model(user_input)
     await update.message.reply_text(answer)
 
-# Запуск бота
+# Основной запуск
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
