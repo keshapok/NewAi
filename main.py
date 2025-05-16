@@ -1,59 +1,66 @@
 import os
-import telebot
-from ctranslate2 import Generator
-from transformers import AutoTokenizer
+import logging
+import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Токен Telegram
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+MODEL_NAME = "Qwen/Qwen2.5-Coder-32B"  # можно выбрать другую из https://huggingface.co/models 
 
-# Путь к модели (укажи свой)
-MODEL_PATH = "models/pygmalion-350m-ru-tiny"
+# Адрес API
+API_URL = f"https://api-inference.huggingface.co/models/ {MODEL_NAME}"
 
-# Загрузка токенизатора и модели
-tokenizer = AutoTokenizer.from_pretrained("TortugaAg/pygmalion-350m-ru-tiny")
-model = Generator(MODEL_PATH, device="cpu", inter_threads=4)
+headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-# Хранилище истории
-dialogue_history = {}
+def query(payload):
+    response = requests.post(API_URL, headers=headers, json=payload)
+    return response.json()
 
-def generate_response(prompt):
-    tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))
-    results = model.generate_batch([tokens], max_length=150, sampling_topk=10)
-    reply = tokenizer.decode(results[0].sequences_ids[0])
-    return reply.strip()
+# Обработчик команды /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Задавайте свой вопрос — я постараюсь ответить.")
 
-def get_prompt_with_history(user_id, user_msg):
-    prompt = "Вы — полезный помощник. Вот история вашего диалога:\n"
-    if user_id in dialogue_history:
-        prompt += "\n".join(dialogue_history[user_id]) + "\n"
-    prompt += f"Пользователь: {user_msg}\nБот:"
-    return prompt
-
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "Привет! Я всегда онлайн и помню наш разговор.")
-    dialogue_history[message.chat.id] = []
-
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
-    user_text = message.text.strip()
-    user_id = message.chat.id
+# Обработчик сообщений
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_input = update.message.text
+    await update.message.reply_text("Думаю над ответом...")
 
     try:
-        prompt = get_prompt_with_history(user_id, user_text)
-        reply = generate_response(prompt)
-        bot.reply_to(message, reply)
-        # Сохраняем историю
-        if user_id not in dialogue_history:
-            dialogue_history[user_id] = []
-        history = dialogue_history[user_id]
-        history.append(f"Пользователь: {user_text}")
-        history.append(f"Бот: {reply}")
-        if len(history) > 6:
-            history.pop(0)
-            history.pop(0)
-    except Exception as e:
-        bot.reply_to(message, f"Ошибка: {e}")
+        output = query({
+            "inputs": user_input,
+            "parameters": {
+                "max_new_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.95
+            }
+        })
 
-print("Бот запущен...")
-bot.polling()
+        if isinstance(output, list) and 'generated_text' in output[0]:
+            answer = output[0]['generated_text']
+        else:
+            answer = "Не удалось получить ответ. Попробуйте снова."
+
+        await update.message.reply_text(answer)
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка: {str(e)}")
+
+# Основная функция
+async def main():
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    await app.run_polling()
+
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(main())
