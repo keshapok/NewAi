@@ -19,7 +19,6 @@ MODEL_NAME = "IlyaGusev/rugpt3small_based_on_gpt2"
 API_URL = f"https://api-inference.huggingface.co/models/ {MODEL_NAME}"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-# Функция запроса к модели
 def query_model(question: str) -> str:
     payload = {
         "inputs": question.strip(),
@@ -52,15 +51,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = query_model(user_input)
     await update.message.reply_text(answer)
 
-# Основная функция запуска
+# Основной запуск
 async def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    await app.run_polling()
+    await app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        pass
