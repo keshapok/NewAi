@@ -4,8 +4,6 @@ import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import nest_asyncio
-import asyncio
-import sys
 
 nest_asyncio.apply()
 
@@ -16,8 +14,8 @@ logging.basicConfig(
 )
 
 # Переменные окружения
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "ВАШ_ТОКЕН")
+HF_API_TOKEN = os.getenv("HF_API_TOKEN", "ВАШ_HF_ТОКЕН")
 
 # Настройки модели
 MODEL_NAME = "ai-forever/ruGPT-3-small"
@@ -56,28 +54,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = query_model(user_input)
     await update.message.reply_text(answer)
 
-# Основной запуск
-async def main():
+# Запуск бота
+if __name__ == '__main__':
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    await app.run_polling(drop_pending_updates=True)
-
-if __name__ == '__main__':
-    # Поддержка Windows/Linux
-    if sys.platform == 'win32':
-        policy = asyncio.WindowsSelectorEventLoopPolicy()
-    else:
-        policy = asyncio.DefaultEventLoopPolicy()
-
-    asyncio.set_event_loop_policy(policy)
-    loop = asyncio.get_event_loop()
-
-    try:
-        loop.run_until_complete(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass
-    finally:
-        loop.close()
+    app.run_polling(drop_pending_updates=True)
