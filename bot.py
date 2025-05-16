@@ -62,7 +62,19 @@ async def main():
 
 if __name__ == '__main__':
     import asyncio
+    import sys
+
+    if sys.platform == 'win32':
+        policy = asyncio.WindowsSelectorEventLoopPolicy()
+    else:
+        policy = asyncio.DefaultEventLoopPolicy()
+
+    asyncio.set_event_loop_policy(policy)
+    loop = asyncio.get_event_loop()
+
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main())
     except (KeyboardInterrupt, SystemExit):
         pass
+    finally:
+        loop.close()
