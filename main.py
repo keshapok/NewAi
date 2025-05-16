@@ -4,7 +4,7 @@ import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Настройка логирования
+# Логирование
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -13,46 +13,46 @@ logging.basicConfig(
 # Переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-MODEL_NAME = "Qwen/Qwen2.5-Coder-32B"  # можно выбрать другую из https://huggingface.co/models 
 
-# Адрес API
+# Настройки модели
+MODEL_NAME = "IlyaGusev/rugpt3small_based_on_gpt2"
 API_URL = f"https://api-inference.huggingface.co/models/ {MODEL_NAME}"
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+# Функция запроса к модели
+def query_model(question: str) -> str:
+    payload = {
+        "inputs": question.strip(),
+        "parameters": {
+            "max_new_tokens": 150,
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "do_sample": True
+        }
+    }
+    try:
+        response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=10)
+        if response.status_code == 200:
+            return response.json()[0]["generated_text"]
+        else:
+            logging.error(f"Ошибка HuggingFace: {response.status_code}, {response.text}")
+            return "Не удалось получить ответ. Попробуйте позже."
+    except Exception as e:
+        logging.exception("Ошибка при обращении к модели")
+        return f"Ошибка: {str(e)}"
 
-def query(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()
-
-# Обработчик команды /start
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Задавайте свой вопрос — я постараюсь ответить.")
+    await update.message.reply_text("Привет! Я ваш ИИ-ассистент на русском языке. Задавайте свои вопросы.")
 
-# Обработчик сообщений
+# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
-    await update.message.reply_text("Думаю над ответом...")
+    logging.info(f"Пользователь: {user_input}")
+    answer = query_model(user_input)
+    await update.message.reply_text(answer)
 
-    try:
-        output = query({
-            "inputs": user_input,
-            "parameters": {
-                "max_new_tokens": 200,
-                "temperature": 0.7,
-                "top_p": 0.95
-            }
-        })
-
-        if isinstance(output, list) and 'generated_text' in output[0]:
-            answer = output[0]['generated_text']
-        else:
-            answer = "Не удалось получить ответ. Попробуйте снова."
-
-        await update.message.reply_text(answer)
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка: {str(e)}")
-
-# Основная функция
+# Основная функция запуска
 async def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
